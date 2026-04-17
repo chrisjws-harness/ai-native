@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../api/client";
 import useTraining from "../hooks/useTraining";
 import ModeSelector from "../components/training/ModeSelector";
@@ -7,7 +7,20 @@ import ActionButtons from "../components/training/ActionButtons";
 import FeedbackBanner from "../components/training/FeedbackBanner";
 import ScoreTracker from "../components/training/ScoreTracker";
 import StrategyGrid from "../components/cherrypick/StrategyGrid";
-import { Ruleset, StrategyResponse, StrategyMap, TrainingMode, Action, HandCombo } from "../types";
+import { Ruleset, StrategyResponse, StrategyMap, TrainingMode, Action, HandCombo, ComboWeight } from "../types";
+
+// Map keys to actions — numpad row, letter keys, home row
+const NUM_MAP: Record<string, Action> = { "4": "H", "5": "S", "6": "D", "0": "P" };
+const LETTER_MAP: Record<string, Action> = { H: "H", S: "S", D: "D", P: "P", R: "R" };
+const HOME_MAP: Record<string, Action> = { a: "H", s: "S", d: "D", f: "P", g: "R" };
+
+function keyToAction(key: string): Action | null {
+  if (key in NUM_MAP) return NUM_MAP[key];
+  const upper = key.toUpperCase();
+  if (upper in LETTER_MAP) return LETTER_MAP[upper];
+  if (key.toLowerCase() in HOME_MAP) return HOME_MAP[key.toLowerCase()];
+  return null;
+}
 
 export default function TrainingPage() {
   const [rulesets, setRulesets] = useState<Ruleset[]>([]);
@@ -16,10 +29,18 @@ export default function TrainingPage() {
   const [surrender, setSurrender] = useState("none");
   const [mode, setMode] = useState<TrainingMode>("random");
   const [loading, setLoading] = useState(true);
+  const [timed, setTimed] = useState(false);
+
+  // Adaptive state
+  const [hotspotSlider, setHotspotSlider] = useState(50);
+  const [adaptiveLoading, setAdaptiveLoading] = useState(false);
+  const [adaptiveError, setAdaptiveError] = useState("");
+
+  // Track the last action submitted (for same-key-to-advance)
+  const lastActionRef = useRef<Action | null>(null);
 
   const training = useTraining(selectedRulesetId, strategy);
 
-  // Fetch rulesets on mount
   useEffect(() => {
     api.get("/rulesets/").then((res) => {
       setRulesets(res.data);
@@ -30,7 +51,6 @@ export default function TrainingPage() {
     });
   }, []);
 
-  // Fetch strategy when ruleset changes
   useEffect(() => {
     if (!selectedRulesetId) return;
     api.get<StrategyResponse>(`/rulesets/${selectedRulesetId}/strategy`).then((res) => {
@@ -42,53 +62,49 @@ export default function TrainingPage() {
   const handleAction = useCallback(
     (action: Action) => {
       if (training.lastResult) {
-        training.nextHand();
+        // Only advance if Enter or same key as last answer
+        if (action === lastActionRef.current) {
+          training.nextHand();
+          lastActionRef.current = null;
+        }
       } else {
+        lastActionRef.current = action;
         training.submitAnswer(action);
       }
     },
     [training]
   );
 
-  // Keyboard shortcuts: letter keys, numpad, and home row
+  // Keyboard shortcuts
   useEffect(() => {
     if (!training.isDrilling) return;
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      // Advance to next hand
       if (training.lastResult) {
-        const advanceKeys = [" ", "Enter", "1", "2", "3", "4", "5", "a", "s", "d", "f", "g"];
-        if (advanceKeys.includes(e.key) || advanceKeys.includes(e.key.toLowerCase())) {
+        // Enter always advances
+        if (e.key === "Enter") {
           e.preventDefault();
           training.nextHand();
+          lastActionRef.current = null;
           return;
         }
+        // Same key as last answer advances
+        const action = keyToAction(e.key);
+        if (action && action === lastActionRef.current) {
+          e.preventDefault();
+          training.nextHand();
+          lastActionRef.current = null;
+          return;
+        }
+        // Any other key: ignore
+        return;
       }
 
-      let action: Action | null = null;
-
-      // Letter keys: H S D P R
-      const letterMap: Record<string, Action> = { H: "H", S: "S", D: "D", P: "P", R: "R" };
-      const upper = e.key.toUpperCase();
-      if (upper in letterMap) {
-        action = letterMap[upper];
-      }
-
-      // Numpad / number row: 1=Hit, 2=Stand, 3=Double, 4=Split, 5=Surrender
-      const numMap: Record<string, Action> = { "1": "H", "2": "S", "3": "D", "4": "P", "5": "R" };
-      if (e.key in numMap) {
-        action = numMap[e.key];
-      }
-
-      // Left hand home row: A=Hit, S=Stand, D=Double, F=Split, G=Surrender
-      const homeMap: Record<string, Action> = { a: "H", s: "S", d: "D", f: "P", g: "R" };
-      if (e.key.toLowerCase() in homeMap) {
-        action = homeMap[e.key.toLowerCase()];
-      }
-
+      const action = keyToAction(e.key);
       if (action) {
         e.preventDefault();
+        lastActionRef.current = action;
         training.submitAnswer(action);
       }
     };
@@ -98,10 +114,46 @@ export default function TrainingPage() {
 
   const handleCherryPickStart = useCallback(
     (combos: HandCombo[]) => {
-      training.startDrilling(combos);
+      training.startDrilling(combos, undefined, timed);
     },
-    [training]
+    [training, timed]
   );
+
+  const handleAdaptiveStart = useCallback(async () => {
+    if (!selectedRulesetId) return;
+    setAdaptiveLoading(true);
+    setAdaptiveError("");
+    try {
+      const res = await api.get<{ weights: ComboWeight[]; total_attempts?: number; min_required?: number }>(
+        `/stats/weights?ruleset_id=${selectedRulesetId}`
+      );
+      const { weights: hotspots, total_attempts, min_required } = res.data;
+      if (min_required && total_attempts !== undefined && total_attempts < min_required) {
+        setAdaptiveError(
+          `Need at least ${min_required} hands to unlock adaptive mode. You have ${total_attempts} so far — keep drilling in Random mode!`
+        );
+        return;
+      }
+      if (hotspots.length === 0) {
+        setAdaptiveError("Perfect accuracy so far — no weak spots to target. Keep it up!");
+        return;
+      }
+      training.startDrilling(undefined, {
+        hotspots,
+        slider: hotspotSlider / 100,
+      }, timed);
+    } catch {
+      setAdaptiveError("Failed to load adaptive data.");
+    } finally {
+      setAdaptiveLoading(false);
+    }
+  }, [selectedRulesetId, hotspotSlider, training, timed]);
+
+  const sliderLabel = hotspotSlider === 0
+    ? "Pure random"
+    : hotspotSlider === 100
+    ? "Only weak spots"
+    : `${hotspotSlider}% of hands target weak spots`;
 
   if (loading) return <div className="loading">Loading rulesets...</div>;
 
@@ -122,12 +174,21 @@ export default function TrainingPage() {
             </option>
           ))}
         </select>
-        <ModeSelector mode={mode} onChange={(m) => { setMode(m); training.stopDrilling(); }} disabled={training.isDrilling} />
+        <ModeSelector mode={mode} onChange={(m) => { setMode(m); training.stopDrilling(); setAdaptiveError(""); }} disabled={training.isDrilling} />
+        <label className="timed-toggle" title="Show live timer and track response speed">
+          <input
+            type="checkbox"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+            disabled={training.isDrilling}
+          />
+          <span className="timed-label">Timed</span>
+        </label>
       </div>
 
       {!training.isDrilling && mode === "random" && strategy && (
         <div className="start-section">
-          <button className="btn btn-primary btn-large" onClick={() => training.startDrilling()}>
+          <button className="btn btn-primary btn-large" onClick={() => training.startDrilling(undefined, undefined, timed)}>
             Start Random Drilling
           </button>
         </div>
@@ -137,9 +198,50 @@ export default function TrainingPage() {
         <StrategyGrid strategy={strategy} onStart={handleCherryPickStart} />
       )}
 
+      {!training.isDrilling && mode === "adaptive" && strategy && (
+        <div className="adaptive-setup">
+          <h3>Adaptive Drilling</h3>
+          <p className="adaptive-desc">
+            Focuses on your weakest spots. Adjust the slider to control how aggressively it targets them.
+          </p>
+          <div className="slider-container">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={hotspotSlider}
+              onChange={(e) => setHotspotSlider(Number(e.target.value))}
+              className="hotspot-slider"
+            />
+            <div className="slider-labels">
+              <span>0% Random</span>
+              <span>50%</span>
+              <span>100% Weak Spots</span>
+            </div>
+            <div className="slider-value">{sliderLabel}</div>
+          </div>
+          {adaptiveError && <div className="adaptive-msg">{adaptiveError}</div>}
+          <button
+            className="btn btn-primary btn-large"
+            onClick={handleAdaptiveStart}
+            disabled={adaptiveLoading}
+          >
+            {adaptiveLoading ? "Loading..." : "Start Adaptive Drilling"}
+          </button>
+        </div>
+      )}
+
       {training.isDrilling && (
         <div className="drill-view">
-          <ScoreTracker correct={training.score.correct} total={training.score.total} />
+          <div className="score-row">
+            <ScoreTracker correct={training.score.correct} total={training.score.total} />
+            {training.isAdaptive && (
+              <span className="adaptive-badge">
+                Adaptive {Math.round(training.adaptiveSlider * 100)}%
+              </span>
+            )}
+            {timed && <span className="timed-badge">Timed</span>}
+          </div>
 
           {training.dealt && training.currentHand && (
             <>
@@ -155,8 +257,8 @@ export default function TrainingPage() {
 
           {training.lastResult && (
             <>
-              <FeedbackBanner result={training.lastResult} />
-              <div className="next-hint">Press <kbd>Space</kbd>, <kbd>Enter</kbd>, or any action key for next hand</div>
+              <FeedbackBanner result={training.lastResult} showTime={timed} />
+              <div className="next-hint">Press <kbd>Enter</kbd> or same key to continue</div>
             </>
           )}
 
@@ -170,11 +272,11 @@ export default function TrainingPage() {
         <div className="shortcut-legend">
           <div className="legend-title">Keyboard Shortcuts</div>
           <div className="legend-row">
-            <span><kbd>1</kbd><kbd>A</kbd> Hit</span>
-            <span><kbd>2</kbd><kbd>S</kbd> Stand</span>
-            <span><kbd>3</kbd><kbd>D</kbd> Double</span>
-            <span><kbd>4</kbd><kbd>F</kbd> Split</span>
-            <span><kbd>5</kbd><kbd>G</kbd> Surrender</span>
+            <span><kbd>4</kbd><kbd>A</kbd> Hit</span>
+            <span><kbd>5</kbd><kbd>S</kbd> Stand</span>
+            <span><kbd>6</kbd><kbd>D</kbd> Double</span>
+            <span><kbd>0</kbd><kbd>F</kbd> Split</span>
+            <span><kbd>G</kbd> Surrender</span>
           </div>
         </div>
       )}

@@ -8,11 +8,11 @@ interface Props {
 }
 
 const ACTIONS: { key: Action; label: string; num: string; home: string }[] = [
-  { key: "H", label: "Hit",       num: "1", home: "A" },
-  { key: "S", label: "Stand",     num: "2", home: "S" },
-  { key: "D", label: "Double",    num: "3", home: "D" },
-  { key: "P", label: "Split",     num: "4", home: "F" },
-  { key: "R", label: "Surrender", num: "5", home: "G" },
+  { key: "H", label: "Hit",       num: "4", home: "A" },
+  { key: "S", label: "Stand",     num: "5", home: "S" },
+  { key: "D", label: "Double",    num: "6", home: "D" },
+  { key: "P", label: "Split",     num: "0", home: "F" },
+  { key: "R", label: "Surrender", num: "",  home: "G" },
 ];
 
 export default function ActionButtons({ hand, hasSurrender, onAction, disabled }: Props) {
@@ -32,7 +32,7 @@ export default function ActionButtons({ hand, hasSurrender, onAction, disabled }
           onClick={() => onAction(a.key)}
           disabled={disabled}
         >
-          {a.label} <kbd>{a.num}</kbd>
+          {a.label} {a.num && <kbd>{a.num}</kbd>}
         </button>
       ))}
     </div>

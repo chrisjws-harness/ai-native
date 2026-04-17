@@ -1,12 +1,18 @@
 import { useState, useCallback, useRef } from "react";
 import api from "../api/client";
-import { StrategyMap, HandCombo, CheckResult, Action } from "../types";
+import { StrategyMap, HandCombo, CheckResult, Action, ComboWeight } from "../types";
 import { DealtHand, dealHand } from "../utils/cards";
+import { weightedPick } from "../utils/weightedRandom";
 
 // Map composite strategy actions to the primary action
 const PRIMARY_ACTION: Record<string, Action> = {
   H: "H", S: "S", D: "D", Ds: "D", P: "P", Ph: "P", Rh: "R", Rs: "R", Rp: "R",
 };
+
+export interface AdaptiveConfig {
+  hotspots: ComboWeight[];
+  slider: number; // 0.0 to 1.0
+}
 
 function getAllCombos(strategy: StrategyMap): HandCombo[] {
   const combos: HandCombo[] = [];
@@ -35,6 +41,9 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [isDrilling, setIsDrilling] = useState(false);
   const selectedCombosRef = useRef<HandCombo[] | null>(null);
+  const adaptiveRef = useRef<AdaptiveConfig | null>(null);
+  const handStartRef = useRef<number>(0);
+  const isTimedRef = useRef(false);
 
   const checkLocally = useCallback(
     (hand: HandCombo, userAction: Action): CheckResult => {
@@ -51,12 +60,30 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
     [strategy]
   );
 
+  const pickNextHand = useCallback((allCombos: HandCombo[]): HandCombo => {
+    const adaptive = adaptiveRef.current;
+    if (!adaptive || adaptive.hotspots.length === 0) {
+      return pickRandom(allCombos);
+    }
+
+    // Two-pool coin flip
+    if (Math.random() < adaptive.slider) {
+      // Draw from hotspot pool, weighted
+      const combos = adaptive.hotspots as HandCombo[];
+      const weights = adaptive.hotspots.map((h) => h.weight);
+      return weightedPick(combos, weights);
+    } else {
+      return pickRandom(allCombos);
+    }
+  }, []);
+
   const dealNewHand = useCallback((pool: HandCombo[]) => {
-    const hand = pickRandom(pool);
+    const hand = pickNextHand(pool);
     setCurrentHand(hand);
     setDealt(dealHand(hand));
     setLastResult(null);
-  }, []);
+    handStartRef.current = performance.now();
+  }, [pickNextHand]);
 
   const nextHand = useCallback(() => {
     if (!strategy) return;
@@ -66,17 +93,24 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
   }, [strategy, dealNewHand]);
 
   const startDrilling = useCallback(
-    (selectedCombos?: HandCombo[]) => {
+    (selectedCombos?: HandCombo[], adaptiveConfig?: AdaptiveConfig, timed?: boolean) => {
       selectedCombosRef.current = selectedCombos || null;
+      adaptiveRef.current = adaptiveConfig || null;
+      isTimedRef.current = timed ?? false;
       setScore({ correct: 0, total: 0 });
       setLastResult(null);
       setIsDrilling(true);
       if (!strategy) return;
       const pool = selectedCombos || getAllCombos(strategy);
       if (pool.length === 0) return;
-      dealNewHand(pool);
+      const hand = adaptiveConfig
+        ? pickNextHand(pool)
+        : pickRandom(pool);
+      setCurrentHand(hand);
+      setDealt(dealHand(hand));
+      handStartRef.current = performance.now();
     },
-    [strategy, dealNewHand]
+    [strategy, pickNextHand]
   );
 
   const stopDrilling = useCallback(() => {
@@ -84,13 +118,16 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
     setCurrentHand(null);
     setDealt(null);
     setLastResult(null);
+    adaptiveRef.current = null;
   }, []);
 
   const submitAnswer = useCallback(
     (userAction: Action) => {
       if (!currentHand || !rulesetId || !strategy) return;
 
+      const responseMs = Math.round(performance.now() - handStartRef.current);
       const result = checkLocally(currentHand, userAction);
+      result.response_ms = responseMs;
       setLastResult(result);
       setScore((s) => ({
         correct: s.correct + (result.correct ? 1 : 0),
@@ -104,6 +141,8 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
         player_value: currentHand.player_value,
         dealer_upcard: currentHand.dealer_upcard,
         user_action: userAction,
+        response_ms: responseMs,
+        is_timed: isTimedRef.current,
       }).catch(() => {});
     },
     [currentHand, rulesetId, strategy, checkLocally]
@@ -119,5 +158,8 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
     stopDrilling,
     submitAnswer,
     nextHand,
+    isAdaptive: !!adaptiveRef.current,
+    adaptiveSlider: adaptiveRef.current?.slider ?? 0,
+    isTimed: isTimedRef.current,
   };
 }

@@ -23,6 +23,8 @@ def check():
         player_value=data["player_value"],
         dealer_upcard=data["dealer_upcard"],
         user_action=data["user_action"],
+        response_ms=data.get("response_ms"),
+        is_timed=data.get("is_timed", False),
     )
 
     if error:

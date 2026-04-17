@@ -14,6 +14,8 @@ class UserResponse(db.Model):
     user_action = db.Column(db.String(4), nullable=False)
     correct_action = db.Column(db.String(4), nullable=False)
     is_correct = db.Column(db.Boolean, nullable=False)
+    response_ms = db.Column(db.Integer, nullable=True)
+    is_timed = db.Column(db.Boolean, nullable=False, server_default="false")
     responded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (

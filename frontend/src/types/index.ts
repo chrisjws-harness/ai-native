@@ -35,6 +35,13 @@ export interface CheckResult {
   correct_action: string;
   correct_primary: string;
   user_action: string;
+  response_ms?: number;
 }
 
-export type TrainingMode = "random" | "cherrypick";
+export type TrainingMode = "random" | "cherrypick" | "adaptive";
+
+export interface ComboWeight extends HandCombo {
+  weight: number;
+  total: number;
+  missed: number;
+}

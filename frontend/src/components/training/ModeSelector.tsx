@@ -23,6 +23,13 @@ export default function ModeSelector({ mode, onChange, disabled }: Props) {
       >
         Cherry Pick
       </button>
+      <button
+        className={`btn btn-mode ${mode === "adaptive" ? "btn-mode-active" : ""}`}
+        onClick={() => onChange("adaptive")}
+        disabled={disabled}
+      >
+        Adaptive
+      </button>
     </div>
   );
 }

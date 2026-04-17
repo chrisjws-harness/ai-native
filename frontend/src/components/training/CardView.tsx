@@ -22,5 +22,11 @@ export function CardFace({ card }: { card: Card }) {
 }
 
 export function CardBack() {
-  return <div className="card-face card-back" />;
+  return (
+    <div className="card-face card-back">
+      <div className="card-back-inner">
+        <span className="card-back-text">KC</span>
+      </div>
+    </div>
+  );
 }

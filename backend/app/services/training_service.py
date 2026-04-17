@@ -16,7 +16,7 @@ PRIMARY_ACTION = {
 }
 
 
-def check_answer(user_id, ruleset_id, hand_type, player_value, dealer_upcard, user_action):
+def check_answer(user_id, ruleset_id, hand_type, player_value, dealer_upcard, user_action, response_ms=None, is_timed=False):
     entry = StrategyEntry.query.filter_by(
         ruleset_id=ruleset_id,
         hand_type=hand_type,
@@ -39,6 +39,8 @@ def check_answer(user_id, ruleset_id, hand_type, player_value, dealer_upcard, us
         user_action=user_action,
         correct_action=entry.correct_action,
         is_correct=is_correct,
+        response_ms=response_ms,
+        is_timed=is_timed,
     )
     db.session.add(response)
     db.session.commit()

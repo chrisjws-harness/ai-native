@@ -6,7 +6,12 @@ const ACTION_NAMES: Record<string, string> = {
   Rs: "Surrender (stand if can't)", Rp: "Surrender (split if can't)",
 };
 
-export default function FeedbackBanner({ result }: { result: CheckResult }) {
+function formatTime(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+export default function FeedbackBanner({ result, showTime }: { result: CheckResult; showTime?: boolean }) {
   const actionName = ACTION_NAMES[result.correct_action] || result.correct_action;
 
   return (
@@ -17,6 +22,9 @@ export default function FeedbackBanner({ result }: { result: CheckResult }) {
         <span>
           Incorrect — correct play: <strong>{actionName}</strong>
         </span>
+      )}
+      {showTime && result.response_ms != null && (
+        <span className="feedback-time">{formatTime(result.response_ms)}</span>
       )}
     </div>
   );

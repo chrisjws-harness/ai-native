@@ -9,7 +9,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="app-layout">
       <header className="app-header">
         <div className="header-left">
-          <h1>Blackjack Trainer</h1>
+          <div className="casino-brand">
+            <span className="brand-the">THE</span>
+            <h1>KINO CASINO</h1>
+            <span className="brand-sub">Blackjack Trainer</span>
+          </div>
           {user && (
             <nav className="header-nav">
               <Link to="/train" className={`nav-link ${location.pathname === "/train" ? "nav-active" : ""}`}>Train</Link>
