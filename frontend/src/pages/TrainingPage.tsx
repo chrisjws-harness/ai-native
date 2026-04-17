@@ -256,10 +256,10 @@ export default function TrainingPage() {
           )}
 
           {training.lastResult && (
-            <>
+            <div className="click-to-advance" onClick={() => { training.nextHand(); lastActionRef.current = null; }}>
               <FeedbackBanner result={training.lastResult} showTime={timed} />
-              <div className="next-hint">Press <kbd>Enter</kbd> or same key to continue</div>
-            </>
+              <div className="next-hint">Click, press <kbd>Enter</kbd>, or same key to continue</div>
+            </div>
           )}
 
           <button className="btn btn-stop" onClick={training.stopDrilling}>
