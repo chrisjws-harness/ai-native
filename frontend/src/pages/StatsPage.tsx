@@ -73,13 +73,16 @@ export default function StatsPage() {
   }, []);
 
   useEffect(() => {
-    setStats(null);
+    let cancelled = false;
     const params = new URLSearchParams();
     if (selectedRulesetId) params.set("ruleset_id", String(selectedRulesetId));
     if (timedFilter === "timed") params.set("timed", "true");
     else if (timedFilter === "untimed") params.set("timed", "false");
     const qs = params.toString();
-    api.get<StatsData>(`/stats/missed${qs ? `?${qs}` : ""}`).then((res) => setStats(res.data));
+    api.get<StatsData>(`/stats/missed${qs ? `?${qs}` : ""}`).then((res) => {
+      if (!cancelled) setStats(res.data);
+    });
+    return () => { cancelled = true; };
   }, [selectedRulesetId, timedFilter]);
 
   const rulesetName = (id: number) => rulesets.find((r) => r.id === id)?.name ?? `Ruleset ${id}`;

@@ -40,6 +40,9 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
   const [lastResult, setLastResult] = useState<CheckResult | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [isDrilling, setIsDrilling] = useState(false);
+  const [isAdaptive, setIsAdaptive] = useState(false);
+  const [adaptiveSlider, setAdaptiveSlider] = useState(0);
+  const [isTimed, setIsTimed] = useState(false);
   const selectedCombosRef = useRef<HandCombo[] | null>(null);
   const adaptiveRef = useRef<AdaptiveConfig | null>(null);
   const handStartRef = useRef<number>(0);
@@ -97,6 +100,9 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
       selectedCombosRef.current = selectedCombos || null;
       adaptiveRef.current = adaptiveConfig || null;
       isTimedRef.current = timed ?? false;
+      setIsAdaptive(!!adaptiveConfig);
+      setAdaptiveSlider(adaptiveConfig?.slider ?? 0);
+      setIsTimed(timed ?? false);
       setScore({ correct: 0, total: 0 });
       setLastResult(null);
       setIsDrilling(true);
@@ -119,6 +125,8 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
     setDealt(null);
     setLastResult(null);
     adaptiveRef.current = null;
+    setIsAdaptive(false);
+    setAdaptiveSlider(0);
   }, []);
 
   const submitAnswer = useCallback(
@@ -158,8 +166,8 @@ export default function useTraining(rulesetId: number | null, strategy: Strategy
     stopDrilling,
     submitAnswer,
     nextHand,
-    isAdaptive: !!adaptiveRef.current,
-    adaptiveSlider: adaptiveRef.current?.slider ?? 0,
-    isTimed: isTimedRef.current,
+    isAdaptive,
+    adaptiveSlider,
+    isTimed,
   };
 }

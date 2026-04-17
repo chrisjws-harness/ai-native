@@ -16,8 +16,9 @@ export default function RegisterPage() {
     try {
       await register(username, password, inviteKey);
       navigate("/train");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Registration failed");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || "Registration failed");
     }
   };
 

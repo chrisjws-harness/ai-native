@@ -95,7 +95,11 @@ Advance to next hand: **Enter** or press the **same key** again.
 
 A Harness CI pipeline for this project should have these stages:
 
+**Important:** The lint and build steps require **Node 20+**. In Harness, set the step's container image to `node:20-alpine` (or any Node 20+ image). The default Harness runner uses Node 16 which is too old for ESLint 9, Vite 8, and TypeScript-ESLint.
+
 #### 1. Lint Frontend
+
+Container image: `node:20-alpine`
 
 ```bash
 cd frontend
@@ -106,6 +110,8 @@ npm run lint
 Runs ESLint across all TypeScript/React source files. Fails the build on lint errors.
 
 #### 2. Build Frontend
+
+Container image: `node:20-alpine`
 
 ```bash
 cd frontend

@@ -15,8 +15,9 @@ export default function LoginPage() {
     try {
       await login(username, password);
       navigate("/train");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || "Login failed");
     }
   };
 

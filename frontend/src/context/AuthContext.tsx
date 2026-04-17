@@ -16,21 +16,21 @@ const AuthContext = createContext<AuthCtx>(null!);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!localStorage.getItem("token"));
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
+    let cancelled = false;
     api
       .get("/auth/me")
-      .then((res) => setUser(res.data))
+      .then((res) => { if (!cancelled) setUser(res.data); })
       .catch(() => {
+        if (cancelled) return;
         localStorage.removeItem("token");
         setToken(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [token]);
 
   const login = async (username: string, password: string) => {
@@ -64,4 +64,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
