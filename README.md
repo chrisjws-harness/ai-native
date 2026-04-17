@@ -89,6 +89,71 @@ docker compose logs -f backend
 
 Advance to next hand: **Enter** or press the **same key** again.
 
+## CI/CD (Harness)
+
+### Pipeline Steps
+
+A Harness CI pipeline for this project should have these stages:
+
+#### 1. Lint Frontend
+
+```bash
+cd frontend
+npm ci
+npm run lint
+```
+
+Runs ESLint across all TypeScript/React source files. Fails the build on lint errors.
+
+#### 2. Build Frontend
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+Runs TypeScript type-checking (`tsc -b`) then Vite production build. Output goes to `frontend/dist/`. This catches type errors and import issues.
+
+#### 3. Build Backend Docker Image
+
+```bash
+docker build -t <registry>/ai-native-backend:${HARNESS_BUILD_ID:-latest} ./backend
+```
+
+Builds the Flask API image from `backend/Dockerfile` (Python 3.12-slim base).
+
+#### 4. Build Frontend Docker Image
+
+```bash
+docker build -t <registry>/ai-native-frontend:${HARNESS_BUILD_ID:-latest} ./frontend
+```
+
+Multi-stage build: compiles the React app with Node 20, copies output into an nginx:alpine image.
+
+#### 5. Push Images
+
+```bash
+docker push <registry>/ai-native-backend:${HARNESS_BUILD_ID:-latest}
+docker push <registry>/ai-native-frontend:${HARNESS_BUILD_ID:-latest}
+```
+
+Push both images to your container registry (Docker Hub, ECR, GCR, Harness Artifact Registry, etc.).
+
+### Required Secrets / Variables
+
+| Name              | Description                          |
+|-------------------|--------------------------------------|
+| `REGISTRY`        | Container registry URL               |
+| `DB_PASSWORD`     | PostgreSQL password                  |
+| `JWT_SECRET_KEY`  | JWT signing secret                   |
+
+### Notes
+
+- There are no automated tests yet (no pytest or jest). When tests are added, insert test stages after the lint/build steps.
+- The backend runs migrations automatically on startup (`flask db upgrade && flask seed-db`), so no separate migration step is needed in the pipeline.
+- For deploy, use the same `docker-compose.yml` or a Kubernetes manifest pointing at the pushed image tags.
+
 ## Project Structure
 
 ```
