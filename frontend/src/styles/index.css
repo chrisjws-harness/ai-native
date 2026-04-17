@@ -482,7 +482,7 @@ body {
   align-items: center;
   gap: 1rem;
   width: 100%;
-  max-width: 650px;
+  max-width: 800px;
 }
 
 /* ===============================
@@ -491,7 +491,7 @@ body {
 
 .felt-table {
   width: 100%;
-  max-width: 550px;
+  max-width: 700px;
   margin: 0.5rem 0;
 }
 
@@ -517,11 +517,11 @@ body {
     url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"),
     /* Radial gradient for table depth */
     radial-gradient(ellipse at 50% 40%, var(--felt-light) 0%, var(--felt) 50%, var(--felt-dark) 100%);
-  padding: 2rem 2.5rem;
+  padding: 2.5rem 3rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   border-left: 1px solid rgba(201, 168, 76, 0.2);
   border-right: 1px solid rgba(201, 168, 76, 0.2);
   position: relative;
@@ -573,14 +573,14 @@ body {
 
 .card-row {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.75rem;
   justify-content: center;
 }
 
 .card-face {
-  width: 72px;
-  height: 104px;
-  border-radius: 7px;
+  width: 100px;
+  height: 145px;
+  border-radius: 8px;
   position: relative;
   font-weight: 700;
   user-select: none;
@@ -613,9 +613,9 @@ body {
 
 .card-back-inner {
   position: absolute;
-  inset: 4px;
+  inset: 6px;
   border: 1px solid rgba(201, 168, 76, 0.25);
-  border-radius: 4px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -631,7 +631,7 @@ body {
 
 .card-back-text {
   font-family: 'Playfair Display', serif;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-weight: 900;
   color: var(--gold);
   opacity: 0.6;
@@ -648,22 +648,22 @@ body {
 }
 
 .card-top-left {
-  top: 5px;
-  left: 6px;
+  top: 7px;
+  left: 8px;
 }
 
 .card-bottom-right {
-  bottom: 5px;
-  right: 6px;
+  bottom: 7px;
+  right: 8px;
   transform: rotate(180deg);
 }
 
 .card-rank {
-  font-size: 0.9rem;
+  font-size: 1.15rem;
 }
 
 .card-corner .card-suit {
-  font-size: 0.65rem;
+  font-size: 0.85rem;
 }
 
 .card-center {
@@ -671,7 +671,7 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.8rem;
+  font-size: 2.4rem;
 }
 
 /* ===============================
@@ -1008,16 +1008,16 @@ body {
   }
 
   .card-face {
-    width: 56px;
-    height: 82px;
+    width: 72px;
+    height: 104px;
   }
 
   .card-rank {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
   }
 
   .card-center {
-    font-size: 1.3rem;
+    font-size: 1.8rem;
   }
 
   .btn-action {
