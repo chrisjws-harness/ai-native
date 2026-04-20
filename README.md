@@ -1,6 +1,6 @@
 # The Kino Casino — Blackjack Strategy Trainer
 
-A blackjack basic strategy trainer with casino-felt UI, adaptive drilling, and response time tracking. Master the odds, beat the house every time.
+A blackjack basic strategy trainer with casino-felt UI, adaptive drilling, and response time tracking. Master the odds, know the play before you see it.
 
 ## Prerequisites
 
